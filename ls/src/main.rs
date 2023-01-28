@@ -1,9 +1,12 @@
+use arg_handler::{ArgHandler, Args};
 use std::ffi::OsString;
 use std::fs::{self, DirEntry, FileType, Permissions};
 use std::io::{self, Write};
 use std::os::unix::prelude::OsStrExt;
 use std::path::Path;
 use std::time::SystemTime;
+
+mod arg_handler;
 
 struct FileSystemEntry {
     name: OsString,
@@ -16,17 +19,17 @@ struct FileSystemEntry {
 }
 
 fn main() {
-    let arguments = vec![];
     // TODO: Handle arguments correctly
-    let path = Path::new(".");
-    let entries = fetch_entries(path, arguments);
+    let args = ArgHandler::new().get_args().unwrap();
+    let entries = fetch_entries(&args);
     match entries {
         Ok(entries) => print(entries),
-        Err(e) => println!("An error occurred while fetching entries"),
+        Err(e) => println!("An error occurred while fetching entries: {}", e),
     }
 }
 
-fn fetch_entries(dir: &Path, args: Vec<String>) -> Result<Vec<FileSystemEntry>, io::Error> {
+fn fetch_entries(args: &Args) -> Result<Vec<FileSystemEntry>, io::Error> {
+    let dir = &args.path;
     let mut entries = vec![];
     if dir.is_dir() {
         for entry in fs::read_dir(dir)? {
