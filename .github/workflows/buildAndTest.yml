@@ -1,7 +1,5 @@
 name: Rust Build and Test
-on:
-  push:
-    branches: [main]
+on: [push, pull_request, workflow_dispatch]
 
 jobs:
   build-and-test:
