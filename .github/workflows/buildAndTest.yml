@@ -1,0 +1,26 @@
+name: Rust Build and Test
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    name: Build and Test Rust Projects
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Build Rust Projects
+        run: |
+          for d in $(ls -d */); do
+            cd "$d"
+            cargo build
+            cd ..
+          done
+      - name: Test Rust Projects
+        run: |
+          for d in $(ls -d */); do
+            cd "$d"
+            cargo test
+            cd ..
+          done
