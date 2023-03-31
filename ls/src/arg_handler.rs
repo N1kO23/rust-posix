@@ -14,6 +14,14 @@ pub struct Args {
     pub path: Box<Path>,
     pub long: bool,
     pub all: bool,
+    pub color: WHEN,
+}
+
+#[derive(Clone)]
+pub enum WHEN {
+    AUTO,
+    ALWAYS,
+    NEVER,
 }
 
 impl ArgHandler {
@@ -23,6 +31,7 @@ impl ArgHandler {
             path: Path::new(".").into(),
             long: false,
             all: false,
+            color: WHEN::AUTO,
         };
         return Self {
             args,
@@ -55,17 +64,12 @@ impl ArgHandler {
         let command = self.env_args[self.index].clone();
         match command.as_str() {
             "-l" => {
-                // let mod_id_vec = self.args_into_i32()?;
+                self.args.long = true;
                 self.index += 1;
             }
             "-a" => {
+                self.args.all = true;
                 self.index += 1;
-                // if self.index >= self.args.len() {
-                //     std::process::exit(0);
-                // } else {
-                //     let mod_name = self.join_args_string();
-                //     self.index += 1;
-                // }
             }
             "help" => {
                 self.index += 1;

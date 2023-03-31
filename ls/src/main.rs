@@ -1,8 +1,10 @@
-use arg_handler::{ArgHandler, Args};
+use arg_handler::{ArgHandler, Args, WHEN};
+use colored::Colorize;
 use std::cmp;
 use std::ffi::OsString;
 use std::fs::{self, DirEntry, FileType, Permissions};
 use std::io::{self, Write};
+use std::os::unix::fs::PermissionsExt;
 use std::os::unix::prelude::OsStrExt;
 use std::path::Path;
 use std::str::FromStr;
@@ -55,39 +57,71 @@ impl List {
                 };
                 entries.push(fs_entry);
             }
+            entries.sort_by_key(|entry| entry.name.clone());
         }
         self.entries = entries;
         Ok(())
     }
 
-    pub fn print(&self) {
+    pub fn print(&self, args: &Args) {
         // TODO: Print the entries properly of the directory
         let term_size = termsize::get();
+        let with_colors = &args.color;
         match term_size {
             Some(size) => {
                 let mut character_count = 0;
                 for entry in &self.entries {
-                    let out = format!(
-                        "{:<width$}",
-                        entry.name.clone().into_string().unwrap(),
-                        width = self.longest_name_len + 2
-                    );
-                    if character_count + out.len() >= size.cols.into() {
-                        io::stdout().write_all("\r\n".as_bytes()).unwrap();
-                        character_count = 0;
-                    }
+                    // TODO: Fix handling for executable files
+                    if args.all || !entry.name.clone().into_string().unwrap().starts_with(".") {
+                        let out = format!(
+                            "{:<width$}",
+                            entry.name.clone().into_string().unwrap(),
+                            width = self.longest_name_len + 2
+                        );
+                        if character_count + out.len() >= size.cols.into() {
+                            io::stdout().write_all("\r\n".as_bytes()).unwrap();
+                            character_count = 0;
+                        }
 
-                    character_count += out.len();
-                    io::stdout().write_all(out.as_bytes()).unwrap();
+                        character_count += out.len();
+                        io::stdout()
+                            .write_all(format_color(out, entry, with_colors).as_bytes())
+                            .unwrap();
+                    }
                 }
             }
             None => {
                 for entry in &self.entries {
                     let output = format!("{:?}\t", entry.name);
-                    io::stdout().write_all(output.as_bytes()).unwrap();
+                    io::stdout()
+                        .write_all(format_color(output, entry, with_colors).as_bytes())
+                        .unwrap();
                 }
             }
         }
+    }
+}
+
+fn format_color(out: String, entry: &FileSystemEntry, with_color: &WHEN) -> String {
+    match with_color {
+        // TODO: Implement automatic colorization if supported
+        WHEN::AUTO => {
+            if entry.r#type.is_dir() {
+                return out.blue().to_string();
+            } else if entry.r#type.is_symlink() {
+                return out.cyan().to_string();
+            } else if (entry.permissions.mode() & 0o100) != 0 {
+                return out.green().to_string();
+            }
+            out
+        }
+        WHEN::ALWAYS => {
+            if entry.r#type.is_dir() {
+                return out.color("blue").to_string();
+            }
+            out
+        }
+        WHEN::NEVER => out,
     }
 }
 
@@ -96,5 +130,5 @@ fn main() {
     let args = ArgHandler::new().get_args().unwrap();
     let mut list = List::new();
     list.fetch_entries(&args).unwrap();
-    list.print();
+    list.print(&args);
 }
