@@ -67,35 +67,41 @@ impl List {
         // TODO: Print the entries properly of the directory
         let term_size = termsize::get();
         let with_colors = &args.color;
-        match term_size {
-            Some(size) => {
-                let mut character_count = 0;
-                for entry in &self.entries {
-                    // TODO: Fix handling for executable files
-                    if args.all || !entry.name.clone().into_string().unwrap().starts_with(".") {
-                        let out = format!(
-                            "{:<width$}",
-                            entry.name.clone().into_string().unwrap(),
-                            width = self.longest_name_len + 2
-                        );
-                        if character_count + out.len() >= size.cols.into() {
-                            io::stdout().write_all("\r\n".as_bytes()).unwrap();
-                            character_count = 0;
-                        }
+        if args.long {
+            for entry in &self.entries {
+                format_long(entry, with_colors);
+            }
+        } else {
+            match term_size {
+                Some(size) => {
+                    let mut character_count = 0;
+                    for entry in &self.entries {
+                        // TODO: Fix handling for executable files
+                        if args.all || !entry.name.clone().into_string().unwrap().starts_with(".") {
+                            let out = format!(
+                                "{:<width$}",
+                                entry.name.clone().into_string().unwrap(),
+                                width = self.longest_name_len + 2
+                            );
+                            if character_count + out.len() >= size.cols.into() {
+                                io::stdout().write_all("\r\n".as_bytes()).unwrap();
+                                character_count = 0;
+                            }
 
-                        character_count += out.len();
-                        io::stdout()
-                            .write_all(format_color(out, entry, with_colors).as_bytes())
-                            .unwrap();
+                            character_count += out.len();
+                            io::stdout()
+                                .write_all(format_color(out, entry, with_colors).as_bytes())
+                                .unwrap();
+                        }
                     }
                 }
-            }
-            None => {
-                for entry in &self.entries {
-                    let output = format!("{:?}\t", entry.name);
-                    io::stdout()
-                        .write_all(format_color(output, entry, with_colors).as_bytes())
-                        .unwrap();
+                None => {
+                    for entry in &self.entries {
+                        let output = format!("{:?}\t", entry.name);
+                        io::stdout()
+                            .write_all(format_color(output, entry, with_colors).as_bytes())
+                            .unwrap();
+                    }
                 }
             }
         }
@@ -123,6 +129,18 @@ fn format_color(out: String, entry: &FileSystemEntry, with_color: &WHEN) -> Stri
         }
         WHEN::NEVER => out,
     }
+}
+
+fn format_long(entry: &FileSystemEntry, with_color: &WHEN) {
+    let out = format_color(entry.name.to_string_lossy().to_string(), entry, with_color);
+    let output = format!(
+        "{} {:?} {}",
+        entry.permissions.mode(),
+        entry.last_modified,
+        out
+    );
+    io::stdout().write_all(output.as_bytes()).unwrap();
+    io::stdout().write_all("\r\n".as_bytes()).unwrap();
 }
 
 fn main() {
